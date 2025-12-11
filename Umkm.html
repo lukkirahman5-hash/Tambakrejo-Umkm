@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGIS UMKM - Tambakrejo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+    <style>
+        /* FONT IMPORT */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
+
+        /* RESET & BASE */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5; /* Warna latar belakang default untuk body */
+            overflow-x: hidden; /* Mencegah scroll horizontal */
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            width: 100%;
+            background: #b4002d; /* Merah Maroon */
+            padding: 18px 60px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-left {
+            font-size: 32px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            color: white; /* Pastikan teks logo putih */
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 40px;
+            font-size: 18px;
+        }
+
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding-bottom: 5px;
+            transition: border-bottom 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-menu a.active {
+            border-bottom: 3px solid white;
+        }
+
+        .nav-menu a:hover:not(.active) {
+            border-bottom: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .nav-icon {
+            width: 40px;
+            cursor: pointer;
+        }
+
+        /* --- CONTENT SECTION MANAGEMENT --- */
+        .content-section {
+            display: none; /* Semua konten disembunyikan secara default */
+            min-height: calc(100vh - 65px); /* Tinggi minimal dikurangi navbar */
+            animation: fadeIn 0.5s ease-out; /* Animasi transisi */
+        }
+
+        .content-section.active {
+            display: block; /* Hanya yang aktif yang ditampilkan */
+        }
+        
+        /* Khusus untuk halaman peta agar map-container mengambil seluruh sisa tinggi */
+        #layanan-section.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* --- HOME PAGE HERO SECTION --- */
+        #Home-section .hero {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            overflow: hidden;
+            background-color: #b4002d; /* Fallback jika gambar tidak load */
+            display: flex; /* Untuk center text vertikal jika hero-image tidak ada */
+            align-items: center;
+            justify-content: center;
+        }
+
+        #Home-section .hero-image {
+            position: absolute; /* Posisikan gambar di belakang teks */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(40%); /* Jauh lebih gelap agar teks putih sangat terbaca */
+            z-index: 1; /* Di bawah teks */
+        }
+
+        #Home-section .hero-text {
+            position: relative; /* Di atas gambar */
+            z-index: 2; /* Di atas gambar */
+            text-align: center;
+            color: white; /* Pastikan teks putih */
+            padding: 20px;
+            max-width: 800px; /* Batasi lebar teks agar tidak terlalu melebar */
+        }
+
+        #Home-section .hero-text h2 {
+            font-size: 24px; /* Sedikit lebih besar */
+            letter-spacing: 5px; /* Sedikit lebih renggang */
+            margin-bottom: 10px;
+        }
+
+        #Home-section .hero-text h1 {
+            font-size: 52px; /* Lebih besar */
+            font-weight: 800;
+            margin-top: 10px;
+            line-height: 1.2; /* Jarak antar baris */
+        }
+
+        #Home-section .hero-text p {
+            margin-top: 15px;
+            font-size: 20px; /* Lebih besar */
+        }
+
+        #Home-section .hero-text .btn {
+            display: inline-block;
+            margin-top: 30px; /* Jarak lebih besar */
+            padding: 15px 40px; /* Lebih besar */
+            background: #b4002d; /* Merah Maroon */
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700; /* Lebih tebal */
+            transition: background 0.3s ease;
+            border: 2px solid white; /* Tambah border putih untuk menonjolkan */
+        }
+
+        #Home-section .hero-text .btn:hover {
+            background: #9a0028; /* Merah Maroon lebih gelap */
+            border-color: #eee;
+        }
+
+        /* --- CONTAINER UTAMA UNTUK KONTEN DI BAWAH HERO --- */
+        .container {
+            padding: 40px 60px;
+            background-color: #f5f5f5; /* Latar belakang konten di bawah hero */
+        }
+
+        .title-red {
+            color: #b4002d; /* Merah Maroon */
+            font-size: 30px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        /* --- FLEXBOX UMUM --- */
+        .flex {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            flex-wrap: wrap; /* Agar responsif di layar kecil */
+        }
+        .flex > div {
+            flex: 1;
+            min-width: 300px; /* Ukuran minimum agar tidak terlalu kecil */
+        }
+
+
+        /* --- FAQ BOX (INFO SECTION) --- */
+        .faq-box {
+            background: #b4002d; /* Merah Maroon */
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .faq-box h2 {
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        /* --- LIST CARD (untuk Team) --- */
+        .list-card {
+            padding: 20px;
+            background: #ffe0e5; /* Merah muda lembut */
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .list-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(180, 0, 45, 0.2);
+        }
+        .list-card small {
+            color: #666;
+        }
+
+        /* --- MAP BOX (Placeholder) --- */
+        .map-box {
+            width: 100%;
+            height: 450px;
+            background: #f5f5f5;
+            border: 2px dashed #b4002d;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #b4002d;
+            font-weight: bold;
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        /* --- BUTTON STYLES --- */
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #b4002d;
+            color: white;
+            border: 2px solid #b4002d;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #9a0028;
+            border-color: #9a0028;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(180, 0, 45, 0.3);
+        }
+
+        /* --- BACK LINK STYLES --- */
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #b4002d;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .back-link:hover {
+            color: #9a0028;
+            text-decoration: underline;
+        }
+
+        /* --- ABOUT SECTION SPECIFIC STYLES --- */
+        .about-box {
+            background: #ffe0e5;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .about-highlight {
+            background: #b4002d;
+            color: white;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .about-category-box {
+            background: white;
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 5px solid #b4002d;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        /* --- PETA LEAFLET --- */
+        #map-container { 
+            height: calc(100vh - 65px); /* Memenuhi sisa layar di bawah navbar */
+            width: 100%;
+            position: relative; 
+        }
+        #map { 
+            height: 100%; 
+            width: 100%; 
+            background-color: #eee; /* Fallback untuk peta */
+        }
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            line-height: 1.4;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+        }
+        /* Style untuk Layer Control agar mirip GeoPortal */
+        .leaflet-control-layers-expanded {
+            padding: 10px;
+            font-size: 14px;
+        }
+        .leaflet-control-layers-expanded label {
+            display: block;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <div class="nav-left" onclick="showSection('Home')">SDGs 8</div>
+        
+        <div class="nav-menu">
+            <a id="nav-Home" onclick="showSection('Home')" class="active">Home</a>
+            <a id="nav-layanan" onclick="showSection('layanan')" class="active">Layanan</a> 
+            <a id="nav-informasi" onclick="showSection('informasi')">Informasi</a>
+            <a id="nav-kategori umkm" onclick="showSection('kategori umkm')">Kategori UMKM</a>
+            <a id="nav-about" onclick="showSection('about')">About</a>
+            <a id="nav-tim" onclick="showSection('tim')">Tim</a>
+        </div>
+        <img src="logo.jpg" class="nav-icon" alt="Menu Icon">
+    </div>
+
+<div id="Home-section" class="content-section active">
+    <div class="hero">   
+        <div class="hero-text">
+            <h2>KELOMPOK 4</h2>
+            <h1>WebGIS Persebaran UMKM <br> Kelurahan Tambakrejo</h1>
+            <p>Digitalisasi Persebaran UMKM di Kelurahan Tambakrejo</p>
+            <a onclick="showSection('layanan')" class="btn" style="cursor: pointer;">Lihat Peta</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2 class="title-red" style="text-align: center;">Selamat Datang!</h2>
+        <p style="text-align: center;">Ini adalah beranda proyek WebGIS Kelompok 4. Silakan jelajahi peta persebaran UMKM di Kelurahan Tambakrejo melalui menu Layanan.</p>
+    </div>
+</div>
+
+<div id="layanan-section" class="content-section">
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+</div>
+
+<div id="informasi-section" class="content-section">
+    <div class="container">
+        <h1 class="title-red" style="text-align: center;">Tentang Kami</h1>
+        
+        <a onclick="showSection('Home')" class="back-link">← Kembali ke Home</a>
+
+        <div class="flex">
+            <div>
+                <p style="margin-bottom: 20px;">
+                    SDGs 8 atau Pekerjaan Layak dan Pertumbuhan Ekonomi merupakan tujuan pembangunan 
+                    berkelanjutan yang berfokus pada peningkatan kesempatan kerja, mendukung produktivitas ekonomi, 
+                    serta mendorong pertumbuhan yang inklusif dan berkelanjutan. Tujuan ini menekankan pentingnya 
+                    penguatan sektor usaha, termasuk UMKM, sebagai motor penggerak ekonomi masyarakat.Berkaitan 
+                    dengan hal tersebut, pemetaan UMKM menjadi langkah penting untuk melihat potensi, persebaran,
+                    dan kebutuhan pelaku usaha di suatu wilayah. Informasi yang jelas dan mudah diakses akan 
+                    membantu UMKM lebih terlihat oleh konsumen, mendukung kegiatan ekonomi lokal, serta 
+                    mempermudah pemerintah dalam membuat kebijakan yang tepat sasaran.Untuk itu, data UMKM di 
+                    Kelurahan Tambakrejo diintegrasikan ke dalam Geoportal UMKM Tambakrejo, sebuah platform 
+                    WebGIS yang menyajikan informasi spasial secara interaktif. Melalui geoportal ini, persebaran 
+                    UMKM dapat dipantau dengan lebih mudah, sehingga mendukung pencapaian SDGs 8 sekaligus 
+                    memperkuat ekosistem ekonomi lokal.
+                </p>
+
+                <h2 class="title-red" style="margin-top:20px;">Fitur Utama</h2>
+                <ul style="list-style-type: disc; margin-left: 25px; color: #333;">
+                    <li style="margin-bottom: 8px;">✔ Peta Interaktif Persebaran UMKM yang mudah dijelajahi.</li>
+                    <li style="margin-bottom: 8px;">✔ Informasi Detail Tiap UMKM (jenis usaha, pemilik, kontak, jam buka).</li>
+                    <li style="margin-bottom: 8px;">✔ Kategori UMKM yang jelas untuk memudahkan pencarian.</li>
+                    <li>✔ Tampilan responsif yang dapat diakses dari berbagai perangkat.</li>
+                </ul>
+            </div>
+
+            <div class="faq-box">
+                <h2>Pertanyaan Umum (FAQ)</h2>
+                <p style="margin-bottom: 15px;"><b>1. Apakah platform ini gratis?</b><br>Ya, platform WebGIS ini dapat diakses dan digunakan secara gratis oleh siapa saja.</p>
+                <p style="margin-bottom: 15px;"><b>2. Apakah data UMKM yang disajikan akurat?</b><br>Data yang kami sajikan berasal dari survei lapangan yang dilakukan oleh tim kami untuk memastikan keakuratan informasi.</p>
+                <p style="margin-bottom: 15px;"><b>3. Bisakah saya menambah atau memperbarui data UMKM?</b><br>Untuk penambahan atau pembaruan data UMKM, Anda dapat menghubungi tim kami melalui kontak yang tersedia di halaman Team.</p>
+                <p style="margin-bottom: 15px;"><b>4. Apa manfaat utama dari WebGIS ini bagi UMKM dan masyarakat?</b><br>WebGIS ini bermanfaat untuk memetakan potensi ekonomi lokal, mempromosikan UMKM, serta memudahkan masyarakat menemukan produk dan layanan di sekitar mereka.</p>
+                <p><b>5. Apakah WebGIS ini hanya mencakup Kelurahan Tambakrejo?</b><br>Untuk saat ini, cakupan data berfokus pada Kelurahan Tambakrejo, namun tidak menutup kemungkinan untuk dikembangkan di wilayah lain di masa mendatang.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="kategori umkm-section" class="content-section">
+    <div class="container">
+        <h1 class="title-red" style="text-align: center;">Kategori UMKM</h1>
+        
+        <a onclick="showSection('Home')" class="back-link">← Kembali ke Home</a>
+     
+        <div>
+            <h2 class="title-red" style="font-size: 20px; margin-bottom: 15px">Makanan & Minuman</h2>
+            <p style="text-align: justify; line-height: 1.7;">
+                UMKM kategori Makanan & Minuman berfokus pada penyediaan makanan dan minuman yang menjadi kebutuhan utama masyarakat. Jenis usahanya cukup beragam, mulai dari kuliner rumahan hingga jajanan siap saji. Contoh usaha yang termasuk dalam kategori ini meliputi oleh-oleh bandeng, angkringan, kedai minuman kekinian, warung makan rumahan, hingga penjual camilan. Persebaran F&B cukup padat di sepanjang jalan raya dan permukiman karena sangat bergantung pada arus pelanggan dan aksesibilitas.
+            </p>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h2 class="title-red" style="font-size: 20px; margin-bottom: 15px">Jasa</h2>
+            <p style="text-align: justify; line-height: 1.7;">
+                Kategori jasa berfokus pada pelayanan yang membantu aktivitas harian masyarakat. UMKM ini tidak menjual barang, melainkan memberikan layanan yang dibutuhkan secara rutin. Contohnya meliputi bengkel sepeda dan motor, jasa laundry, jasa cuci motor, percetakan sederhana, hingga pengecatan atau servis dinamo. Persebarannya terkonsentrasi di lingkungan pemukiman, terutama pada titik-titik yang mudah diakses oleh warga sekitar.
+            </p>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h2 class="title-red" style="font-size: 20px; margin-bottom: 15px">Klontong</h2>
+            <p style="text-align: justify; line-height: 1.7;">
+                UMKM klontong berfokus pada penyediaan kebutuhan pokok dan barang harian. Jenis usaha ini menyediakan sembako, snack dan minuman, alat rumah tangga, hingga kebutuhan domestik lainnya. Usaha klontong biasanya berada di tengah-tengah permukiman karena sangat mengandalkan kedekatan dengan konsumen dan menjadi tempat belanja utama warga tanpa perlu pergi jauh. Sebarannya mengikuti pola kawasan hunian padat dan tidak masuk ke zona industri.
+            </p>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h2 class="title-red" style="font-size: 20px; margin-bottom: 15px">Material</h2>
+            <p style="text-align: justify; line-height: 1.7;">
+                UMKM kategori material berfokus pada penyediaan bahan-bahan pembangunan dan renovasi. Contohnya mencakup toko material bangunan, penjualan alat pertukangan, perlengkapan renovasi rumah, dan peralatan pancing jika masuk kategori material khusus. UMKM material cenderung berada di titik yang memungkinkan akses kendaraan besar seperti pick-up atau truk. Persebarannya lebih sedikit dan hanya berada di jalur yang mendukung mobilitas barang, bukan di area industri.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div id="about-section" class="content-section">
+    <div class="container">
+        <h1 class="title-red" style="text-align: center;">Tentang Kelurahan Tambakrejo</h1>
+        
+        <a onclick="showSection('Home')" class="back-link">← Kembali ke Home</a>
+
+        <div class="about-box">
+            
+            <div class="about-highlight">
+                <strong>Ringkasan Singkat:</strong> 
+                Tambakrejo adalah kawasan beraktivitas ekonomi tinggi dengan potensi UMKM yang beragam,
+                mulai dari sektor perikanan, perdagangan, hingga jasa.
+            </div>
+            
+            <h2 class="title-red" style="font-size: 24px; margin-top: 25px;">
+                Gambaran Umum Wilayah
+            </h2>
+            
+            <p style="text-align: justify; line-height: 1.7;">
+                Kelurahan Tambakrejo berada di Kecamatan Gayamsari, Kota Semarang, dan dikenal sebagai kawasan
+                dataran rendah dengan aktivitas masyarakat yang cukup padat. Berbagai kegiatan ekonomi berkembang,
+                mulai dari sektor perdagangan, perikanan, hingga industri rumah tangga. Aktivitas ini menjadi salah
+                satu penopang utama perekonomian masyarakat sekaligus membentuk karakter wilayah sebagai kawasan
+                produktif dan dinamis.
+            </p>
+            
+            <h2 class="title-red" style="font-size: 24px; margin-top: 25px;">
+                Potensi UMKM di Tambakrejo
+            </h2>
+            
+            <p style="text-align: justify; line-height: 1.7;">
+                Wilayah Tambakrejo memiliki beragam jenis UMKM yang terus berkembang. Selain UMKM berbasis perikanan
+                seperti olahan hasil laut, terdapat pula UMKM perdagangan seperti toko kelontong, warung makan, toko
+                pancing, dan toko bangunan. Usaha berbasis jasa juga tumbuh pesat, seperti laundry, bengkel sepeda,
+                bengkel las, jasa tambal ban, hingga jasa printing atau fotokopi. Keberagaman ini menunjukkan bahwa
+                masyarakat Tambakrejo memiliki ekosistem ekonomi lokal yang aktif dan adaptif.
+            </p>
+            
+            <div class="about-category-box">
+                <strong>Kategori UMKM di Tambakrejo:</strong>
+                <ul style="margin-top:10px; line-height:1.6; color: #333;">
+                    <li>Makanan</li>
+                    <li>Minuman</li>
+                    <li>Jasa</li>
+                    <li>Toko Kelontong</li>
+                    <li>Toko Material</li>
+                </ul>
+            </div>
+            
+            <h2 class="title-red" style="font-size: 24px; margin-top: 25px;">
+                Peran GeoPortal Tambakrejo
+            </h2>
+            
+            <p style="text-align: justify; line-height: 1.7;">
+                GeoPortal ini dihadirkan sebagai platform informasi spasial terintegrasi yang bertujuan mendukung
+                perencanaan, pemantauan, dan pengembangan wilayah. Dengan penyajian data geospasial yang lebih
+                terstruktur dan interaktif, platform ini diharapkan membantu masyarakat, peneliti, dan pemerintah
+                dalam mengidentifikasi potensi, memahami kondisi wilayah, hingga merencanakan pembangunan yang
+                berkelanjutan secara lebih efektif.
+            </p>
+            
+            <button class="btn" onclick="showSection('layanan')" style="margin-top: 20px;">Lihat Peta</button>
+        </div>
+    </div>
+</div> 
+
+
+<div id="tim-section" class="content-section">
+    <div class="container">
+        <h1 class="title-red" style="text-align: center;">Anggota Team</h1>
+        
+        <a onclick="showSection('Home')" class="back-link">← Kembali ke Home</a>
+
+       <div class="flex">
+  <div>
+    <h2 class="title-red" style="font-size: 24px; margin-bottom: 15px">
+      Anggota Tim Pengembang
+    </h2>
+
+    <div class="list-card">
+      <strong>Arifin Tohar</strong> (Ketua Tim)<br />
+      
+    </div>
+
+    <div class="list-card">
+      <strong>Amalia Sholikhah</strong><br />
+      
+    </div>
+
+    <div class="list-card">
+      <strong>Naufal Yusetya A</strong><br />
+      
+    </div>
+
+    <div class="list-card">
+      <strong>Arya Putra M</strong><br />
+      
+    </div>
+
+    <div class="list-card">
+    <strong>Redina Dwi Muryana</strong><br />
+    
+    </div>
+
+    <div class="list-card">
+     <strong>Naufal Ali Ahmadi S</strong><br />
+     
+    </div>
+
+    <div class="list-card">
+      <strong>Fadhil Sidqi Al Asyir</strong><br />
+      
+    </div>
+
+    <div class="list-card">
+      <strong>Diva Annisa Putri N</strong><br />
+      
+    </div>
+
+    <div class="list-card">
+      <strong>Lukki Rahman</strong><br />
+      
+    </div>
+
+  </div>
+</div>
+
+                <h2 class="title-red" style="font-size: 24px; margin-bottom: 15px; margin-top: 30px;">Foto Tim</h2>
+
+<div class="map-box" style="
+    width: 100%;
+    padding: 0;
+    border: 1px dashed #aaa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    background-color: #eee;
+">
+    <img src="foto.jpeg" style="
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+        display: block;
+    ">
+                </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+<script>
+    // Variabel global untuk peta dan status inisialisasi
+    var map; 
+    var isMapInitialized = false;
+
+    // Fungsi untuk menampilkan/menyembunyikan bagian konten
+    function showSection(sectionId) {
+        // 1. Sembunyikan semua bagian konten
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // 2. Hapus status active dari semua tautan navigasi
+        document.querySelectorAll('.nav-menu a').forEach(link => {
+            link.classList.remove('active');
+        });
+
+        // 3. Tampilkan bagian yang dipilih
+        const sectionToShow = document.getElementById(sectionId + '-section');
+        if (sectionToShow) {
+        sectionToShow.classList.add('active');
+        }
+
+        // 4. Atur status active di Navbar
+        const navLink = document.getElementById('nav-' + sectionId);
+        if (navLink) { // Pastikan navLink ada (misal Home tidak punya ID nav-Home)
+            navLink.classList.add('active');
+        } else if (sectionId === 'Home') {
+            // Jika di Home, pastikan tidak ada link nav yang aktif
+            document.querySelectorAll('.nav-menu a').forEach(link => link.classList.remove('active'));
+        }
+
+        // 5. Khusus untuk halaman Peta (layanan): Inisialisasi atau update ukuran
+        if (sectionId === 'layanan') {
+            if (!isMapInitialized) {
+                initializeMap();
+                isMapInitialized = true;
+            } else {
+                if (map) { // Pastikan map sudah ada sebelum invalidateSize
+                    map.invalidateSize();
+                }
+            }
+        }
+        
+        // Scroll ke atas setiap kali ganti halaman
+        window.scrollTo(0, 0); 
+    }
+
+    // Fungsi Inisialisasi Peta
+    function initializeMap() {
+        // Pastikan #map ada dan belum diinisialisasi
+        if (document.getElementById('map') && !map) {
+            // Inisialisasi map
+            map = L.map('map').setView([-6.958, 110.445], 15); 
+            
+            // Definisikan Base Map (Peta Dasar)
+            var openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 20,
+                attribution: '&copy; OpenStreetMap contributors'
+            });
+            openStreetMap.addTo(map); // Tambahkan Base Map secara default
+
+            // Data UMKM 
+            var dataUMKM = [
+                {jenis:"Makanan", pemilik:"Bapak Suhartono", tahun:2001, usaha:"UD. Putri Laut", pemasaran:"Online & Offline", jam:"06.00-21.00", kontak:"82133336738", lat:-6.95642408, lon:110.44181909},
+                {jenis:"Makanan", pemilik:"Ibu Fatkhan", tahun:1987, usaha:"Bandeng Bu Fatkhan", pemasaran:"Online & Offline", jam:"24 jam", kontak:"8990712242", lat:-6.95703136, lon:110.44270289},
+                {jenis:"Minuman", pemilik:"Ibu Shofi", tahun:2024, usaha:"Es Teh Jumbo", pemasaran:"Offline", jam:"07.00-16.00", kontak:"82242181312", lat:-6.95889697, lon:110.44467207},
+                {jenis:"Makanan", pemilik:"Ibu Wiwik", tahun:2024, usaha:"Angkringan markas.com", pemasaran:"Offline", jam:"06.00-23.59", kontak:"-", lat:-6.95701926, lon:110.44233691},
+                {jenis:"Minuman", pemilik:"Ibu Ditya", tahun:2017, usaha:"Toko Nio", pemasaran:"Online & Offline", jam:"06.30-19.00", kontak:"8987000078", lat:-6.95931406, lon:110.44266987},
+                {jenis:"Makanan", pemilik:"Bu Parminingsih", tahun:1993, usaha:"Agen Ikan P. Maman", pemasaran:"Online & Offline", jam:"24 Jam", kontak:"81325426325", lat:-6.95609652, lon:110.44820567},
+                {jenis:"Makanan", pemilik:"Pak Sugianto", tahun:2010, usaha:"Bakso Malang", pemasaran:"Offline", jam:"09.00-20.00", kontak:"-", lat:-6.95820607, lon:110.44598333},
+                {jenis:"Minuman", pemilik:"Bu Arofah", tahun:2022, usaha:"Es Teh Jumbo Malang", pemasaran:"Offline & Online", jam:"09.30-17.00", kontak:"8124686572", lat:-6.95937091, lon:110.44332277},
+                {jenis:"Makanan", pemilik:"Bu Iko", tahun:2025, usaha:"Sushi Bu Iko", pemasaran:"Offline", jam:"14.30-18.00", kontak:"83878960186", lat:-6.95780714, lon:110.44496883},
+                {jenis:"Makanan", pemilik:"Dokter Hayik", tahun:2017, usaha:"Dokter Chicken", pemasaran:"Offline & Online", jam:"06.00-20.00", kontak:"81803553407", lat:-6.95819312, lon:110.44489758},
+                {jenis:"Makanan", pemilik:"Bu Hesti", tahun:2024, usaha:"D'kriuk", pemasaran:"Offline & Online", jam:"09.00-20.00", kontak:"895397200300", lat:-6.95838007, lon:110.44479960},
+                {jenis:"Makanan", pemilik:"Bu Sukini", tahun:2005, usaha:"Warteg Bu Sukini", pemasaran:"Offline", jam:"05.00-21.00", kontak:"895703228700", lat:-6.95684021, lon:110.44809698},
+                {jenis:"Makanan", pemilik:"Pak Sutardi", tahun:2020, usaha:"Warung jajanan Pak Sutardi", pemasaran:"Offline", jam:"08.00-17.00", kontak:"-", lat:-6.95676327, lon:110.44789231},
+                {jenis:"Minuman", pemilik:"Bu Govinda", tahun:2024, usaha:"Es teh solo", pemasaran:"Offline & Online", jam:"10.00-22.00", kontak:"85183051274", lat:-6.95927554, lon:110.44361048},
+                {jenis:"Jasa", pemilik:"Pak Nuryadi", tahun:1997, usaha:"Bengkel Sepeda Pak Nur", pemasaran:"Offline", jam:"08.00-19.00", kontak:"8386066347", lat:-6.95948705, lon:110.44316901},
+                {jenis:"Jasa", pemilik:"Pak Kastono", tahun:2002, usaha:"Bengkel Dinamo/elektro Boma", pemasaran:"Offline", jam:"09.00-16.00", kontak:"82224166265", lat:-6.95950503, lon:110.44291597},
+                {jenis:"Jasa", pemilik:"Ibu Santi", tahun:2010, usaha:"Santi Laundry", pemasaran:"Offline & Online", jam:"08.00-18.00", kontak:"895413441049", lat:-6.95637101, lon:110.44445199},
+                {jenis:"Jasa", pemilik:"Pak Maskun", tahun:2009, usaha:"Tambal Ban dan Cuci Motor", pemasaran:"Offline", jam:"07.00-16.00", kontak:"85875518323", lat:-6.95648998, lon:110.44826695},
+                {jenis:"Jasa", pemilik:"mas jipo/cipo", tahun:2018, usaha:"dworo copy/goprint", pemasaran:"Offline & Online", jam:"08.00-21.00", kontak:"82322785927", lat:-6.95890401, lon:110.44481202},
+                {jenis:"Jasa", pemilik:"Mas Chandra", tahun:2022, usaha:"Agen Es Kristal Bintang", pemasaran:"Offline", jam:"06.00-18.00", kontak:"88200609290", lat:-6.95907066, lon:110.44092591},
+                {jenis:"Jasa", pemilik:"Pak Hisam Mansur", tahun:2018, usaha:"Bengkel SAM Tekhnik", pemasaran:"Offline", jam:"08.00-17.00", kontak:"81390073573", lat:-6.95929749, lon:110.44342651},
+                {jenis:"Jasa", pemilik:"Bu Endah", tahun:2010, usaha:"Sylvia Laundry", pemasaran:"Offline & Online", jam:"05.00-21.00", kontak:"89510292115", lat:-6.95629007, lon:110.44455193},
+                {jenis:"Toko Material", pemilik:"Mas Kholid", tahun:2011, usaha:"Nizam Material", pemasaran:"Offline", jam:"08.00-16.30", kontak:"82243074892", lat:-6.95689410, lon:110.44521812},
+                {jenis:"Toko Material", pemilik:"Bapak Sumarsono", tahun:2020, usaha:"Toko Robot Pancing", pemasaran:"Offline", jam:"04.30-20.00", kontak:"-", lat:-6.95936537, lon:110.44330286},
+                {jenis:"Toko Kelontong", pemilik:"Ibu Siti", tahun:2022, usaha:"Toko Kelontong Bu Siti", pemasaran:"Offline", jam:"05.00-21.00", kontak:"-", lat:-6.95787526, lon:110.44274064},
+                {jenis:"Toko Kelontong", pemilik:"Pak Suwarno", tahun:1995, usaha:"Toko Kelontong 12", pemasaran:"Offline", jam:"06.00-18.00", kontak:"81324097388", lat:-6.95912899, lon:110.44259903}
+            ]; 
+
+            // =======================================================
+            // 1. DEFINISI LAYER GROUP & CLUSTER
+            // =======================================================
+            // Marker Cluster Group untuk "Semua UMKM"
+            var markers = L.markerClusterGroup(); 
+            
+            // Definisikan LayerGroup individual untuk kategori
+            var layerMakanan = L.layerGroup();
+            var layerMinuman = L.layerGroup();
+            var layerJasa = L.layerGroup();
+            var layerTokoMaterial = L.layerGroup();
+            var layerTokoKelontong = L.layerGroup();
+            
+            // Simbol warna kategori untuk Marker Icon
+            function warnaKategori(jenis) {
+                // Tambahkan case "Makanan & Minuman" jika ada, atau biarkan default "gray"
+                if (jenis.includes("Makanan")) return "red";
+                if (jenis.includes("Minuman")) return "blue";
+                if (jenis.includes("Jasa")) return "green";
+                if (jenis.includes("Material")) return "orange";
+                if (jenis.includes("Kelontong")) return "black";
+                return "gray"; // default
+            }
+
+            // =======================================================
+            // 2. ITERASI DATA DAN PENAMBAHAN MARKER KE LAYER GROUP
+            // =======================================================
+            dataUMKM.forEach(function(item) {
+                var color = warnaKategori(item.jenis);
+                var icon = L.icon({
+                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34]
+                });
+
+                var popupContent = `
+                    <b>${item.usaha}</b><br>
+                    Jenis: ${item.jenis}<br>
+                    Pemilik: ${item.pemilik}<br>
+                    Tahun Berdiri: ${item.tahun}<br>
+                    Pemasaran: ${item.pemasaran}<br>
+                    Jam Buka: ${item.jam}<br>
+                    Kontak: ${item.kontak}
+                `;
+
+                var marker = L.marker([item.lat, item.lon], {icon: icon})
+                    .bindPopup(popupContent);
+                
+                // Tambahkan ke Marker Cluster Group utama
+                markers.addLayer(marker); 
+
+                // Tambahkan marker ke LayerGroup kategori yang sesuai
+                if (item.jenis.includes("Makanan")) layerMakanan.addLayer(marker);
+                if (item.jenis.includes("Minuman")) layerMinuman.addLayer(marker);
+                if (item.jenis.includes("Jasa")) layerJasa.addLayer(marker);
+                if (item.jenis.includes("Toko Material")) layerTokoMaterial.addLayer(marker);
+                if (item.jenis.includes("Toko Kelontong")) layerTokoKelontong.addLayer(marker);
+
+            });
+            
+            // Tambahkan Marker Cluster Group ke peta (aktif secara default)
+            map.addLayer(markers); 
+            
+            // =======================================================
+            // 3. LAYER CONTROL
+            // =======================================================
+            var baseLayer = {
+                "Peta Dasar OSM": openStreetMap
+            };
+            
+            var overlayMaps = {
+                // UMKM Cluster (Aktif secara default)
+                "Semua UMKM": markers, 
+                // Kategori individual (Layer Group)
+                "UMKM Makanan": layerMakanan,
+                "UMKM Minuman": layerMinuman,
+                "UMKM Jasa": layerJasa,
+                "UMKM Toko Material": layerTokoMaterial,
+                "UMKM Toko Kelontong": layerTokoKelontong
+            };
+
+            // Tambahkan Layer Control ke peta (posisi default kanan atas)
+            L.control.layers(baseLayer, overlayMaps).addTo(map);
+
+           // =======================================================
+// 4. LEGENDA (Rapi / Ikon Lurus)
+// =======================================================
+var legend = L.control({position: 'topright'});
+
+legend.onAdd = function (map) {
+    var div = L.DomUtil.create('div', 'info legend'),
+        labels = ['Makanan', 'Minuman', 'Jasa', 'Toko Material', 'Toko Kelontong'],
+        colors = ['red', 'blue', 'green', 'orange', 'black'];
+
+    div.innerHTML += '<b>Kategori UMKM</b><br>';
+
+    for (var i = 0; i < colors.length; i++) {
+        div.innerHTML += `
+            <div style="display: flex; align-items: center; margin-bottom: 6px;">
+                <span style="
+                    width: 18px;
+                    height: 18px;
+                    background: ${colors[i]};
+                    border-radius: 50%;
+                    margin-right: 8px;
+                    opacity: 0.8;
+                "></span>
+                <span>${labels[i]}</span>
+            </div>
+        `;
+    }
+
+    return div;
+};
+
+legend.addTo(map);
+
+
+            // PENTING: Panggil invalidateSize setelah inisialisasi
+            map.invalidateSize();
+        }
+    }
+
+    // Panggil showSection untuk memastikan halaman Home muncul saat pertama kali dibuka
+    showSection('Home');
+</script>
+
+</body>
+</html>
